@@ -22,14 +22,14 @@
           "session_key": "Session Key",
           "session_id": "Session ID",
           "user_id": "User ID",
-          "action": "Action number"
+          "action": "Action numbers"
         },
         "data_description": {
           "address": "BLE MAC address. Pre-filled when auto-discovered.",
           "ltk": "16-byte hex key from pairing (32 characters)",
           "session_key": "Session key from 1Control server (32 characters)",
           "session_id": "Session ID from 1Control server (16 characters)",
-          "action": "Action number for gate open (default 0)"
+          "action": "Action numbers (comma-separated, e.g. 0,1)"
         }
       },
       "pick_device": {
@@ -61,6 +61,7 @@
       }
     },
     "error": {
+      "invalid_actions": "Invalid action numbers. Enter comma-separated numbers, e.g. 0,1",
       "invalid_hex": "Invalid hex format or wrong length.",
       "parse_failed": "Could not extract data from log. Make sure the log contains a security API call.",
       "cannot_connect": "Cannot connect to device. Check the BLE address.",

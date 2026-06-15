@@ -57,9 +57,11 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     client: SoloMiniClient = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        [SoloMiniButton(client, entry, description) for description in BUTTON_DESCRIPTIONS]
-    )
+    entities = []
+    for action in client.actions:
+        for description in BUTTON_DESCRIPTIONS:
+            entities.append(SoloMiniButton(client, entry, description, action))
+    async_add_entities(entities)
 
 
 class SoloMiniButton(ButtonEntity):
@@ -70,19 +72,27 @@ class SoloMiniButton(ButtonEntity):
         client: SoloMiniClient,
         entry: ConfigEntry,
         description: ButtonEntityDescription,
+        action: int = 0,
     ) -> None:
         self._client = client
         self._entry = entry
         self.entity_description = description
-        self._attr_unique_id = (
-            f"onecontrol_{entry.data['address'].replace(':', '').lower()}_{description.key}"
-        )
+        self._action = action
+        
+        address_clean = entry.data["address"].replace(":", "").lower()
+        if action == 0:
+            self._attr_unique_id = f"onecontrol_{address_clean}_{description.key}"
+            self._attr_name = description.name
+        else:
+            self._attr_unique_id = f"onecontrol_{address_clean}_{description.key}_action_{action}"
+            self._attr_name = f"{description.name} (Action {action + 1})"
+
         self._attr_device_info = dr.DeviceInfo(
             identifiers={(DOMAIN, entry.data["address"])},
         )
 
     async def async_press(self, **kwargs: Any) -> None:
-        action = self._entry.data.get("action", 0)
+        action = self._action
         key = self.entity_description.key
 
         if key == "clone_remote":

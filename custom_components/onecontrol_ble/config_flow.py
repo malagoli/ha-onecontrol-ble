@@ -51,7 +51,7 @@ class OneControlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        for info in async_discovered_service_info(self.hass, connectable=True):
+        for info in async_discovered_service_info(self.hass, connectable=False):
             if SOLOMINI_SERVICE_UUID in [s.lower() for s in info.service_uuids]:
                 self._discovered_devices[info.address] = (
                     f"{info.name or 'SoloMini'} ({info.address})"
@@ -197,6 +197,7 @@ class OneControlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
             ltk = user_input["ltk"].strip().lower().replace(" ", "")
             sk = user_input["session_key"].strip().lower().replace(" ", "")
             sid = user_input["session_id"].strip().lower().replace(" ", "")
+            action = user_input.get("action", "0").strip()
 
             if not _is_hex(ltk, 32):
                 errors["ltk"] = "invalid_hex"
@@ -205,6 +206,18 @@ class OneControlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
             elif not _is_hex(sid, 16):
                 errors["session_id"] = "invalid_hex"
             else:
+                try:
+                    # Validate comma-separated actions list
+                    actions_list = [int(x.strip()) for x in action.split(",") if x.strip()]
+                    if not actions_list:
+                        raise ValueError
+                    for a in actions_list:
+                        if a < 0:
+                            raise ValueError
+                except ValueError:
+                    errors["action"] = "invalid_actions"
+
+            if not errors:
                 if not self._discovered_address:
                     await self.async_set_unique_id(address)
                     self._abort_if_unique_id_configured()
@@ -217,7 +230,7 @@ class OneControlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
                         "session_key": sk,
                         "session_id": sid,
                         "user_id": user_input.get("user_id", 0),
-                        "action": user_input.get("action", 0),
+                        "action": action,
                         "last_cc": self._parsed.get("last_cc", 0),
                     },
                 )
@@ -232,7 +245,7 @@ class OneControlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
                 vol.Required("session_key", default=self._parsed.get("session_key", "")): str,
                 vol.Required("session_id", default=self._parsed.get("session_id", "")): str,
                 vol.Optional("user_id", default=0): int,
-                vol.Optional("action", default=0): int,
+                vol.Optional("action", default="0"): str,
             }
         )
         return self.async_show_form(

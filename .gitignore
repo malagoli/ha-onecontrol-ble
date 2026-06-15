@@ -3,3 +3,7 @@
 __pycache__
 
 check.sh
+
+# Local Home Assistant test environment
+.venv-ha/
+.ha-config/

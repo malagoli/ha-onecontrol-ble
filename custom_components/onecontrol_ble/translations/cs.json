@@ -22,14 +22,14 @@
           "session_key": "Session Key",
           "session_id": "Session ID",
           "user_id": "User ID",
-          "action": "Číslo akce"
+          "action": "Čísla akcí"
         },
         "data_description": {
           "address": "MAC adresa BLE zařízení. Při automatické detekci je předvyplněna.",
           "ltk": "16-bajtový hex klíč z párování (32 znaků)",
           "session_key": "Session klíč ze serveru 1Control (32 znaků)",
           "session_id": "Session ID ze serveru 1Control (16 znaků)",
-          "action": "Číslo akce pro otevření brány (výchozí 0)"
+          "action": "Čárkou oddělená čísla akcí (např. 0,1)"
         }
       },
       "pick_device": {
@@ -61,6 +61,7 @@
       }
     },
     "error": {
+      "invalid_actions": "Neplatná čísla akcí. Zadejte čísla oddělená čárkou, např. 0,1",
       "invalid_hex": "Neplatný hex formát nebo špatná délka.",
       "parse_failed": "Nepodařilo se extrahovat data z logu. Zkontrolujte, zda log obsahuje volání security API.",
       "cannot_connect": "Nelze se připojit k zařízení. Zkontrolujte BLE adresu.",

@@ -35,12 +35,19 @@ class SoloMiniClient:
         self,
         address: str,
         security: SecurityData,
-        action: int = 0,
+        actions: list[int] | None = None,
+        action: int | None = None,
         ble_device: BLEDevice | None = None,
     ):
         self.address = address
         self.security = security
-        self.action = action
+        if actions is not None:
+            self.actions = actions
+        elif action is not None:
+            self.actions = [action]
+        else:
+            self.actions = [0]
+        self.action = self.actions[0] if self.actions else 0
         self.ble_device = ble_device
         self._lock = asyncio.Lock()
 
@@ -57,21 +64,22 @@ class SoloMiniClient:
             )
         return BleakClient(self.address, timeout=CONNECT_TIMEOUT)
 
-    async def open_gate(self) -> bool:
+    async def open_gate(self, action: int | None = None) -> bool:
         if self._lock.locked():
             _LOGGER.warning("Already in progress")
             return False
         async with self._lock:
             for attempt in range(3):
                 try:
-                    return await self._do_open()
+                    return await self._do_open(action)
                 except Exception as e:
                     _LOGGER.warning("Attempt %d failed: %s", attempt + 1, e)
                     if attempt < 2:
                         await asyncio.sleep(3)
             return False
 
-    async def _do_open(self) -> bool:
+    async def _do_open(self, action: int | None = None) -> bool:
+        target_action = action if action is not None else self.action
         random_a = os.urandom(8)
         q: asyncio.Queue[bytes] = asyncio.Queue()
 
@@ -106,7 +114,7 @@ class SoloMiniClient:
                 self.security.session_id,
                 current_cc,
                 self.security.user_id,
-                self.action,
+                target_action,
             )
             await client.write_gatt_char(TX_CHAR_UUID, pkt, response=True)
 
@@ -128,7 +136,7 @@ class SoloMiniClient:
                         self.security.session_id,
                         resp_cc,
                         self.security.user_id,
-                        self.action,
+                        target_action,
                     )
                     await client.write_gatt_char(TX_CHAR_UUID, pkt2, response=True)
                     new_cc = await self._collect_response(q, resp_cc)
@@ -142,7 +150,7 @@ class SoloMiniClient:
                             self.security.session_id,
                             resp_cc,
                             self.security.user_id,
-                            self.action,
+                            target_action,
                         )
                         await client.write_gatt_char(TX_CHAR_UUID, pkt3, response=True)
                         new_cc = await self._collect_response(q, resp_cc)

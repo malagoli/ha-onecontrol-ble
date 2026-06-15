@@ -40,10 +40,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     address = entry.data["address"]
     ble_device = async_ble_device_from_address(hass, address, connectable=True)
 
+    action_data = entry.data.get("action", 0)
+    if isinstance(action_data, int):
+        actions = [action_data]
+    elif isinstance(action_data, str):
+        try:
+            actions = [int(x.strip()) for x in action_data.split(",") if x.strip()]
+        except Exception:
+            actions = [0]
+    else:
+        actions = [0]
+    if not actions:
+        actions = [0]
+
     client = SoloMiniClient(
         address=address,
         security=sec,
-        action=entry.data.get("action", 0),
+        actions=actions,
         ble_device=ble_device,
     )
 
@@ -67,6 +80,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator: DataUpdateCoordinator[dict] = DataUpdateCoordinator(
         hass,
         _LOGGER,
+        config_entry=entry,
         name=f"onecontrol_{address}",
         update_method=_fetch_all,
         update_interval=SCAN_INTERVAL,

@@ -23,12 +23,14 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     client: SoloMiniClient = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([SoloMiniOpeningTime(client, entry)])
+    entities = []
+    for action in client.actions:
+        entities.append(SoloMiniOpeningTime(client, entry, action))
+    async_add_entities(entities)
 
 
 class SoloMiniOpeningTime(NumberEntity):
     _attr_has_entity_name = True
-    _attr_name = "Opening time"
     _attr_icon = "mdi:timer"
     _attr_entity_category = EntityCategory.CONFIG
     _attr_native_min_value = 0
@@ -38,19 +40,26 @@ class SoloMiniOpeningTime(NumberEntity):
     _attr_mode = NumberMode.BOX
     _attr_native_value: float = 0
 
-    def __init__(self, client: SoloMiniClient, entry: ConfigEntry) -> None:
+    def __init__(self, client: SoloMiniClient, entry: ConfigEntry, action: int = 0) -> None:
         self._client = client
         self._entry = entry
-        self._attr_unique_id = (
-            f"onecontrol_{entry.data['address'].replace(':', '').lower()}_opening_time"
-        )
+        self._action = action
+        
+        address_clean = entry.data["address"].replace(":", "").lower()
+        if action == 0:
+            self._attr_unique_id = f"onecontrol_{address_clean}_opening_time"
+            self._attr_name = "Opening time"
+        else:
+            self._attr_unique_id = f"onecontrol_{address_clean}_opening_time_action_{action}"
+            self._attr_name = f"Opening time (Action {action + 1})"
+
         self._attr_device_info = dr.DeviceInfo(
             identifiers={(DOMAIN, entry.data["address"])},
         )
 
     async def async_set_native_value(self, value: float) -> None:
         time_s: int = int(value)
-        action = self._entry.data.get("action", 0)
+        action = self._action
         _LOGGER.info("Setting opening time to %ds for action=%d", time_s, action)
         result = await self._client.set_opening_time(action, time_s)
         if result is not None:

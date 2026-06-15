@@ -27,7 +27,12 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     client: SoloMiniClient = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([SoloMiniCover(client, entry)], True)
+
+    entities = []
+    for action_num in client.actions:
+        entities.append(SoloMiniCover(client, entry, action_num))
+
+    async_add_entities(entities, True)
 
 
 class SoloMiniCover(CoverEntity):
@@ -38,12 +43,20 @@ class SoloMiniCover(CoverEntity):
     _attr_is_closed = None
     _attr_is_opening = False
     _attr_has_entity_name = True
-    _attr_name = None
 
-    def __init__(self, client: SoloMiniClient, entry: ConfigEntry) -> None:
+    def __init__(self, client: SoloMiniClient, entry: ConfigEntry, action: int = 0) -> None:
         self._client = client
         self._entry = entry
-        self._attr_unique_id = f"onecontrol_{entry.data['address'].replace(':', '').lower()}"
+        self._action = action
+        
+        address_clean = entry.data["address"].replace(":", "").lower()
+        if action == 0:
+            self._attr_unique_id = f"onecontrol_{address_clean}"
+            self._attr_name = None
+        else:
+            self._attr_unique_id = f"onecontrol_{address_clean}_action_{action}"
+            self._attr_name = f"Action {action + 1}"
+
         self._attr_device_info = dr.DeviceInfo(
             identifiers={(DOMAIN, entry.data["address"])},
             connections={(dr.CONNECTION_BLUETOOTH, entry.data["address"])},
@@ -55,7 +68,7 @@ class SoloMiniCover(CoverEntity):
     async def async_open_cover(self, **kwargs: Any) -> None:
         self._attr_is_opening = True
         self.async_write_ha_state()
-        success = await self._client.open_gate()
+        success = await self._client.open_gate(self._action)
         self._attr_is_opening = False
         if success:
             self._attr_is_closed = False
@@ -64,7 +77,7 @@ class SoloMiniCover(CoverEntity):
                 data={**self._entry.data, "last_cc": self._client.security.last_cc},
             )
         else:
-            _LOGGER.error("Failed to open gate %s", self._client.address)
+            _LOGGER.error("Failed to open gate %s (action %d)", self._client.address, self._action)
         self.async_write_ha_state()
 
     @property
