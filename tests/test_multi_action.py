@@ -214,3 +214,136 @@ async def test_entities_creation():
     assert added_numbers[1]._attr_unique_id == "onecontrol_aabbccddeeff_opening_time_action_1"
     assert added_numbers[1]._attr_name == "Opening time (Action 2)"
     assert added_numbers[1]._action == 1
+
+
+@pytest.mark.asyncio
+async def test_cover_open_updates_battery():
+    hass = MagicMock()
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry_id"
+    entry.data = {
+        "address": "AA:BB:CC:DD:EE:FF",
+        "name": "SoloMini Device",
+    }
+    
+    mock_sec = MagicMock(spec=SecurityData)
+    mock_sec.last_cc = 5
+    mock_sec.battery_raw = 2700
+    
+    client = MagicMock(spec=SoloMiniClient)
+    client.actions = [0]
+    client.action = 0
+    client.security = mock_sec
+    client.open_gate = AsyncMock(return_value=True)
+    
+    coordinator = MagicMock()
+    coordinator.data = {"battery_raw": 2600}
+    coordinator.async_set_updated_data = MagicMock()
+    
+    hass.data = {
+        "onecontrol_ble": {
+            entry.entry_id: client,
+            f"{entry.entry_id}_coordinator": coordinator,
+        }
+    }
+    
+    added_covers = []
+    def add_covers(entities, update_before_add=False):
+        added_covers.extend(entities)
+        
+    await async_setup_cover(hass, entry, add_covers)
+    assert len(added_covers) == 1
+    
+    cover = added_covers[0]
+    cover.hass = hass
+    cover.async_write_ha_state = MagicMock()
+    
+    # Trigger opening
+    await cover.async_open_cover()
+    
+    # Assertions
+    client.open_gate.assert_called_once_with(0)
+    assert coordinator.data["battery_raw"] == 2700
+    coordinator.async_set_updated_data.assert_called_once_with({"battery_raw": 2700})
+    hass.async_create_task.assert_called_once()
+    coordinator.async_request_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_button_press_refreshes_coordinator():
+    hass = MagicMock()
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry_id"
+    entry.data = {
+        "address": "AA:BB:CC:DD:EE:FF",
+        "name": "SoloMini Device",
+    }
+    
+    client = MagicMock(spec=SoloMiniClient)
+    client.actions = [0]
+    client.action = 0
+    client.start_scanner = AsyncMock(return_value=True)
+    
+    coordinator = MagicMock()
+    
+    hass.data = {
+        "onecontrol_ble": {
+            entry.entry_id: client,
+            f"{entry.entry_id}_coordinator": coordinator,
+        }
+    }
+    
+    added_buttons = []
+    def add_buttons(entities):
+        added_buttons.extend(entities)
+        
+    await async_setup_button(hass, entry, add_buttons)
+    # Find the start_scanner button
+    btn = next(b for b in added_buttons if b.entity_description.key == "start_scanner")
+    btn.hass = hass
+    
+    await btn.async_press()
+    
+    client.start_scanner.assert_called_once_with(0)
+    hass.async_create_task.assert_called_once()
+    coordinator.async_request_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_number_set_refreshes_coordinator():
+    hass = MagicMock()
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry_id"
+    entry.data = {
+        "address": "AA:BB:CC:DD:EE:FF",
+        "name": "SoloMini Device",
+    }
+    
+    client = MagicMock(spec=SoloMiniClient)
+    client.actions = [0]
+    client.action = 0
+    client.set_opening_time = AsyncMock(return_value=1)
+    
+    coordinator = MagicMock()
+    
+    hass.data = {
+        "onecontrol_ble": {
+            entry.entry_id: client,
+            f"{entry.entry_id}_coordinator": coordinator,
+        }
+    }
+    
+    added_numbers = []
+    def add_numbers(entities):
+        added_numbers.extend(entities)
+        
+    await async_setup_number(hass, entry, add_numbers)
+    num = added_numbers[0]
+    num.hass = hass
+    num.async_write_ha_state = MagicMock()
+    
+    await num.async_set_native_value(15.0)
+    
+    client.set_opening_time.assert_called_once_with(0, 15)
+    hass.async_create_task.assert_called_once()
+    coordinator.async_request_refresh.assert_called_once()

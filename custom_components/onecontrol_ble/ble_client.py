@@ -106,12 +106,18 @@ class SoloMiniClient:
             _LOGGER.debug("Session: %s", resp.hex())
             our_sid, our_sk = derive_session(self.security.ltk, random_a, resp[4:12])
 
+            session_key = self.security.session_key
+            session_id = self.security.session_id
+            if not session_key or session_key == bytes(16):
+                session_key = our_sk
+                session_id = our_sid
+
             current_cc = self.security.last_cc
             _LOGGER.debug("Trying with last_cc=%d", current_cc)
 
             pkt = build_open_command(
-                self.security.session_key,
-                self.security.session_id,
+                session_key,
+                session_id,
                 current_cc,
                 self.security.user_id,
                 target_action,
@@ -132,8 +138,8 @@ class SoloMiniClient:
                         return False
                     _LOGGER.debug("Probe CC=%d", resp_cc)
                     pkt2 = build_open_command(
-                        self.security.session_key,
-                        self.security.session_id,
+                        session_key,
+                        session_id,
                         resp_cc,
                         self.security.user_id,
                         target_action,
@@ -268,8 +274,8 @@ class SoloMiniClient:
 
             # GetSystemInfo
             pkt = build_get_system_info(
-                self.security.session_key,
-                self.security.session_id,
+                our_sk,
+                our_sid,
                 resp_cc,
                 self.security.user_id,
             )
@@ -294,8 +300,8 @@ class SoloMiniClient:
                 return {}
 
             info = decrypt_system_info(
-                self.security.session_key,
-                self.security.session_id,
+                our_sk,
+                our_sid,
                 assembled,
             )
             if info:
@@ -349,24 +355,17 @@ class SoloMiniClient:
                 if resp_cc is None:
                     return None
 
-                pkt = build_open_command(
-                    self.security.session_key,
-                    self.security.session_id,
-                    resp_cc,
-                    self.security.user_id,
-                    action=0,
-                )
                 import struct as _struct
 
                 from .protocol import CCM_TAG_LEN, build_tlv
 
                 cc = resp_cc + 1
-                nonce = self.security.session_id[:8] + _struct.pack("<I", cc)
+                nonce = our_sid[:8] + _struct.pack("<I", cc)
                 aad = _struct.pack("<H", self.security.user_id) + _struct.pack("<I", cc) + b"\x01"
                 from Crypto.Cipher import AES as _AES
 
                 cipher = _AES.new(
-                    self.security.session_key,
+                    our_sk,
                     _AES.MODE_CCM,
                     nonce=nonce,
                     mac_len=CCM_TAG_LEN,
@@ -530,10 +529,10 @@ class SoloMiniClient:
                 from .protocol import CCM_TAG_LEN, build_tlv
 
                 cc = resp_cc + 1
-                nonce = self.security.session_id[:8] + _struct.pack("<I", cc)
+                nonce = our_sid[:8] + _struct.pack("<I", cc)
                 aad = _struct.pack("<H", self.security.user_id) + _struct.pack("<I", cc) + b"\x10"
                 cipher = _AES.new(
-                    self.security.session_key,
+                    our_sk,
                     _AES.MODE_CCM,
                     nonce=nonce,
                     mac_len=CCM_TAG_LEN,
@@ -649,10 +648,10 @@ class SoloMiniClient:
                 from .protocol import CCM_TAG_LEN, build_tlv
 
                 cc = resp_cc + 1
-                nonce = self.security.session_id[:8] + _struct.pack("<I", cc)
+                nonce = our_sid[:8] + _struct.pack("<I", cc)
                 aad = _struct.pack("<H", self.security.user_id) + _struct.pack("<I", cc) + b"\x07"
                 cipher = _AES.new(
-                    self.security.session_key,
+                    our_sk,
                     _AES.MODE_CCM,
                     nonce=nonce,
                     mac_len=CCM_TAG_LEN,
@@ -698,11 +697,11 @@ class SoloMiniClient:
                 )
                 b_arr = assembled[1:-6]
                 cmd = assembled[0]
-                nonce2 = self.security.session_id[:8] + _struct.pack("<I", cc_r)
+                nonce2 = our_sid[:8] + _struct.pack("<I", cc_r)
                 aad2 = _struct.pack("<H", 0) + _struct.pack("<I", cc_r) + bytes([cmd])
                 try:
                     c2 = _AES.new(
-                        self.security.session_key,
+                        our_sk,
                         _AES.MODE_CCM,
                         nonce=nonce2,
                         mac_len=CCM_TAG_LEN,
@@ -735,10 +734,10 @@ class SoloMiniClient:
 
         def build_user_cmd(last_cc: int, plaintext: bytes) -> bytes:
             cc = last_cc + 1
-            nonce = self.security.session_id[:8] + _struct.pack("<I", cc)
+            nonce = our_sid[:8] + _struct.pack("<I", cc)
             aad = _struct.pack("<H", self.security.user_id) + _struct.pack("<I", cc) + b"\x07"
             cipher = _AES.new(
-                self.security.session_key,
+                our_sk,
                 _AES.MODE_CCM,
                 nonce=nonce,
                 mac_len=CCM_TAG_LEN,
@@ -764,10 +763,10 @@ class SoloMiniClient:
             )
             b_arr = assembled[1:-6]
             cmd = assembled[0]
-            nonce = self.security.session_id[:8] + _struct.pack("<I", cc)
+            nonce = our_sid[:8] + _struct.pack("<I", cc)
             aad = _struct.pack("<H", 0) + _struct.pack("<I", cc) + bytes([cmd])
             cipher = _AES.new(
-                self.security.session_key,
+                our_sk,
                 _AES.MODE_CCM,
                 nonce=nonce,
                 mac_len=CCM_TAG_LEN,

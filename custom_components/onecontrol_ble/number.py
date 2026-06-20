@@ -66,5 +66,7 @@ class SoloMiniOpeningTime(NumberEntity):
             self._attr_native_value = float(time_s)
             self.async_write_ha_state()
             _LOGGER.info("Opening time set successfully")
+            coordinator = self.hass.data[DOMAIN][f"{self._entry.entry_id}_coordinator"]
+            self.hass.async_create_task(coordinator.async_request_refresh())
         else:
             _LOGGER.error("Failed to set opening time")

@@ -76,6 +76,13 @@ class SoloMiniCover(CoverEntity):
                 self._entry,
                 data={**self._entry.data, "last_cc": self._client.security.last_cc},
             )
+            coordinator = self.hass.data[DOMAIN][f"{self._entry.entry_id}_coordinator"]
+            if coordinator.data is None:
+                coordinator.data = {}
+            if self._client.security.battery_raw is not None:
+                coordinator.data["battery_raw"] = self._client.security.battery_raw
+                coordinator.async_set_updated_data(coordinator.data)
+            self.hass.async_create_task(coordinator.async_request_refresh())
         else:
             _LOGGER.error("Failed to open gate %s (action %d)", self._client.address, self._action)
         self.async_write_ha_state()

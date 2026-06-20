@@ -9,7 +9,19 @@ import pytest
 
 from custom_components.onecontrol_ble.ble_client import SoloMiniClient
 from custom_components.onecontrol_ble.protocol import NACK, SecurityData
-from tests.conftest import TEST_LTK, TEST_SESSION_ID, TEST_SESSION_KEY
+from tests.conftest import (
+    TEST_LTK,
+    TEST_RANDOM_A,
+    TEST_RANDOM_B,
+    TEST_SESSION_ID,
+    TEST_SESSION_KEY,
+)
+
+
+@pytest.fixture(autouse=True)
+def mock_urandom():
+    with patch("os.urandom", return_value=bytes.fromhex(TEST_RANDOM_A)):
+        yield
 
 
 def make_session_response(random_b: bytes) -> bytes:
@@ -101,7 +113,7 @@ def make_encrypted_user_response(
 class TestGetUsers:
     @pytest.mark.asyncio
     async def test_get_users_returns_list(self, security):
-        random_b = bytes(range(8))
+        random_b = bytes.fromhex(TEST_RANDOM_B)
         user0_payload = make_user_payload(0, 1, "+420123456789")
         user1_payload = make_user_payload(1, 0, "+420987654321")
 
@@ -131,7 +143,7 @@ class TestGetUsers:
 
     @pytest.mark.asyncio
     async def test_get_users_empty(self, security):
-        random_b = bytes(range(8))
+        random_b = bytes.fromhex(TEST_RANDOM_B)
         responses = [
             make_session_response(random_b),
             make_probe_response(cc=10),
@@ -150,7 +162,7 @@ class TestGetUsers:
 
     @pytest.mark.asyncio
     async def test_get_users_nack_returns_empty(self, security):
-        random_b = bytes(range(8))
+        random_b = bytes.fromhex(TEST_RANDOM_B)
         responses = [
             make_session_response(random_b),
             NACK,
@@ -186,7 +198,7 @@ class TestGetUsers:
 
     @pytest.mark.asyncio
     async def test_get_users_admin_type(self, security):
-        random_b = bytes(range(8))
+        random_b = bytes.fromhex(TEST_RANDOM_B)
         user_payload = make_user_payload(0, 1, "admin")
         responses = [
             make_session_response(random_b),
@@ -208,7 +220,7 @@ class TestGetUsers:
 
     @pytest.mark.asyncio
     async def test_get_users_standard_user_has_restrictions(self, security):
-        random_b = bytes(range(8))
+        random_b = bytes.fromhex(TEST_RANDOM_B)
         user_payload = make_user_payload(1, 0, "guest")
         responses = [
             make_session_response(random_b),

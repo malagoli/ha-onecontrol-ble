@@ -94,26 +94,36 @@ class SoloMiniButton(ButtonEntity):
     async def async_press(self, **kwargs: Any) -> None:
         action = self._action
         key = self.entity_description.key
+        success = False
 
         if key == "clone_remote":
             result = await self._client.clone_remote(action)
             if result is not None:
                 _LOGGER.info("Remote cloned, slot=%d", result)
+                success = True
             else:
                 _LOGGER.error("Remote clone failed")
 
         elif key == "start_scanner":
             ok = await self._client.start_scanner(action)  # type: ignore[attr-defined]
             _LOGGER.info("Start scanner: %s", "OK" if ok else "FAILED")
+            success = ok
 
         elif key == "confirm_scanner":
             ok = await self._client.confirm_scanner(action)  # type: ignore[attr-defined]
             _LOGGER.info("Confirm scanner: %s", "OK" if ok else "FAILED")
+            success = ok
 
         elif key == "complete_scanner":
             ok = await self._client.complete_scanner(action)  # type: ignore[attr-defined]
             _LOGGER.info("Complete scanner: %s", "OK" if ok else "FAILED")
+            success = ok
 
         elif key == "undo_scanner":
             ok = await self._client.undo_scanner(action)  # type: ignore[attr-defined]
             _LOGGER.info("Undo scanner: %s", "OK" if ok else "FAILED")
+            success = ok
+
+        if success:
+            coordinator = self.hass.data[DOMAIN][f"{self._entry.entry_id}_coordinator"]
+            self.hass.async_create_task(coordinator.async_request_refresh())
