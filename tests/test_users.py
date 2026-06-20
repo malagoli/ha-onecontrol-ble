@@ -102,7 +102,7 @@ def make_encrypted_user_response(
     cc = last_cc + 1
     pt = bytes([rc]) + payload
     nonce = security.session_id[:8] + s.pack("<I", cc)
-    aad = s.pack("<H", 0) + s.pack("<I", cc) + b"\x07"
+    aad = s.pack("<H", security.user_id) + s.pack("<I", cc) + b"\x07"
     cipher = AES.new(security.session_key, AES.MODE_CCM, nonce=nonce, mac_len=6)
     cipher.update(aad)
     ct, tag = cipher.encrypt_and_digest(pt)

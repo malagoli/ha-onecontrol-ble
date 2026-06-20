@@ -303,6 +303,7 @@ class SoloMiniClient:
                 our_sk,
                 our_sid,
                 assembled,
+                self.security.user_id,
             )
             if info:
                 self.security.battery_raw = info["battery_raw"]
@@ -698,7 +699,7 @@ class SoloMiniClient:
                 b_arr = assembled[1:-6]
                 cmd = assembled[0]
                 nonce2 = our_sid[:8] + _struct.pack("<I", cc_r)
-                aad2 = _struct.pack("<H", 0) + _struct.pack("<I", cc_r) + bytes([cmd])
+                aad2 = _struct.pack("<H", self.security.user_id) + _struct.pack("<I", cc_r) + bytes([cmd])
                 try:
                     c2 = _AES.new(
                         our_sk,
@@ -764,7 +765,7 @@ class SoloMiniClient:
             b_arr = assembled[1:-6]
             cmd = assembled[0]
             nonce = our_sid[:8] + _struct.pack("<I", cc)
-            aad = _struct.pack("<H", 0) + _struct.pack("<I", cc) + bytes([cmd])
+            aad = _struct.pack("<H", self.security.user_id) + _struct.pack("<I", cc) + bytes([cmd])
             cipher = _AES.new(
                 our_sk,
                 _AES.MODE_CCM,

@@ -277,7 +277,7 @@ class TestDecryptSystemInfo:
         assert result["max_users"] == 6
         assert result["version"] == 17
         assert result["dst"] is True
-        assert result["name"] == "test"
+        assert result["name"] == "testa"
 
     def test_wrong_key_fails(self):
         wrong_sk = bytes(16)

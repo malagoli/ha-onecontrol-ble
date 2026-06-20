@@ -126,6 +126,8 @@ def decrypt_system_info(
     session_key: bytes,
     session_id: bytes,
     assembled: bytes,
+    user_id: int = 0,
+    is_pad: bool = False,
 ) -> dict | None:
     if len(assembled) < 8:
         return None
@@ -135,7 +137,7 @@ def decrypt_system_info(
     b_arr = assembled[1:-6]
 
     nonce = session_id[:8] + struct.pack("<I", cc)
-    aad = struct.pack("<H", 0) + struct.pack("<I", cc) + bytes([cmd])
+    aad = struct.pack("<H", user_id) + struct.pack("<I", cc) + bytes([cmd])
     ct = b_arr[:-CCM_TAG_LEN]
     tag = b_arr[-CCM_TAG_LEN:]
 
@@ -149,6 +151,14 @@ def decrypt_system_info(
     if len(pt) < 18 or pt[0] != 0:
         return None
 
+    version = pt[15]
+    if is_pad and version >= 20 and len(pt) > 20:
+        name_bytes = pt[18:-2]
+        pin_code = int.from_bytes(pt[-2:], "little")
+    else:
+        name_bytes = pt[18:]
+        pin_code = 0
+
     result = {
         "serial": int.from_bytes(pt[1:5], "little"),
         "battery_raw": int.from_bytes(pt[5:7], "little"),
@@ -159,6 +169,8 @@ def decrypt_system_info(
         "version": pt[15],
         "dst": bool(pt[16]),
         "sys_options": pt[17],
-        "name": pt[18:-1].rstrip(b"\\x00").decode("utf-8", "ignore") if len(pt) > 19 else "",
+        "name": name_bytes.rstrip(b"\x00").decode("utf-8", "ignore"),
+        "pin_code": pin_code,
     }
     return result
+
