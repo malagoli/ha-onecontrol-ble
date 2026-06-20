@@ -686,7 +686,7 @@ class SoloMiniClient:
                 from .protocol import assemble_fragments as af
 
                 assembled = af(frags)
-                if not assembled:
+                if not assembled or len(assembled) < 13:
                     return None
 
                 d = assembled
@@ -755,6 +755,8 @@ class SoloMiniClient:
             return build_tlv(payload)
 
         def decrypt_user_response(assembled: bytes) -> tuple[int, bytes, int]:
+            if len(assembled) < 13:
+                return -1, b"", 0
             d = assembled
             cc = (
                 (d[-4] & 0xFF)
@@ -848,7 +850,7 @@ class SoloMiniClient:
                     except TimeoutError:
                         break
                 assembled = assemble_fragments(frags)
-                if not assembled:
+                if not assembled or len(assembled) < 13:
                     return -1, b"", last_cc + 1
                 return decrypt_user_response(assembled)
 

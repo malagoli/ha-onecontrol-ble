@@ -129,7 +129,7 @@ def decrypt_system_info(
     user_id: int = 0,
     is_pad: bool = False,
 ) -> dict | None:
-    if len(assembled) < 8:
+    if len(assembled) < 13:
         return None
     cmd = assembled[0]
     d = assembled

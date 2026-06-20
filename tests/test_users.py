@@ -241,3 +241,22 @@ class TestGetUsers:
         assert result[0]["type"] == 0
         assert result[0]["actions_mask"] == 1
         assert result[0]["day_mask"] == 0x7F
+
+    @pytest.mark.asyncio
+    async def test_get_users_short_response_does_not_crash(self, security):
+        random_b = bytes.fromhex(TEST_RANDOM_B)
+        responses = [
+            make_session_response(random_b),
+            make_probe_response(cc=10),
+            bytes([0x00, 0x02]),  # too short!
+        ]
+        fake_ble = FakeUserClient(responses)
+        client = make_client(security)
+
+        with patch(
+            "custom_components.onecontrol_ble.ble_client.BleakClient",
+            return_value=fake_ble,
+        ):
+            result = await client.get_users()
+
+        assert result == []
